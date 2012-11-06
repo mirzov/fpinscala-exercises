@@ -59,10 +59,10 @@ object RNG {
 
   def ints(count: Int)(rng: RNG): (List[Int], RNG) = {
 		if(count <= 0) (Nil, rng)
-		else ints(count - 1)(rng) match{
-			case (ilist,r) =>
-				val (inext, rnext) = r.nextInt
-				(inext :: ilist, rnext)
+		else{
+			val (inext, r1) = rng.nextInt
+			val (ilist, rnext) = ints(count - 1)(r1)
+			(inext :: ilist, rnext)
 		}
 	}
 
@@ -91,9 +91,22 @@ object RNG {
 		}		
 	}
 
-	def ints_elegant(n: Int): Rand[List[Int]] = sequence((1 to n).map(_ => int).toList)
+  def ints_elegant(n: Int): Rand[List[Int]] = sequence(List.fill(n)(int))
 
-  def flatMap[A,B](f: Rand[A])(g: A => Rand[B]): Rand[B] = sys.error("todo")
+  def flatMap[A,B](f: Rand[A])(g: A => Rand[B]): Rand[B] = { rnd =>
+	val (a, r1) = f(rnd)
+	g(a)(r1)
+  }
+  
+  val positiveInt_viaFlatMap: Rand[Int] = flatMap(int){i =>
+	if(i == Int.MinValue) int else unit(i)
+  }
+  
+  def map_viaFlatMap[A,B](s: Rand[A])(f: A => B): Rand[B] = flatMap(s)((unit[B] _).compose(f))
+  
+  def map2_viaFlatMap[A,B,C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] = 
+	flatMap(ra)(a => flatMap(rb)(b => unit(f(a,b))))
+  
 }
 
 case class State[S,+A](run: S => (A, S)) {
