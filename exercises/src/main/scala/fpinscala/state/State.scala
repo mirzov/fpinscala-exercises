@@ -94,8 +94,8 @@ object RNG {
   def ints_elegant(n: Int): Rand[List[Int]] = sequence(List.fill(n)(int))
 
   def flatMap[A,B](f: Rand[A])(g: A => Rand[B]): Rand[B] = { rnd =>
-	val (a, r1) = f(rnd)
-	g(a)(r1)
+		val (a, r1) = f(rnd)
+		g(a)(r1)
   }
   
   val positiveInt_viaFlatMap: Rand[Int] = flatMap(int){i =>
@@ -112,20 +112,13 @@ object RNG {
 case class State[S,+A](run: S => (A, S)) {
 
   def map[B](f: A => B): State[S, B] = flatMap((State.unit[S, B] _).compose(f))
-//  State(s => {
-//	val (a, s1) = run(s)
-//	(f(a), s1)
-//  })
   
-  def map2[B,C](sb: State[S, B])(f: (A, B) => C): State[S, C] = State(s => {
-	val (a, s1) = run(s)
-	val (b, s2) = sb.run(s1)
-	(f(a,b), s2)
-  })
+  def map2[B,C](sb: State[S, B])(f: (A, B) => C): State[S, C] =
+		for(a <- this; b <- sb) yield f(a,b)
   
   def flatMap[B](f: A => State[S, B]): State[S, B] = State(s => {
-	val (a, s1) = run(s)
-	f(a).run(s1)
+		val (a, s1) = run(s)
+		f(a).run(s1)
   })
   
 }
@@ -139,7 +132,41 @@ case class Machine(locked: Boolean, candies: Int, coins: Int)
 object State {
 
   def unit[S,A](a: A):State[S, A] = State(s => (a, s))
+
+	def sequence[S,A](fs: List[State[S,A]]): State[S, List[A]] = fs match {
+		case Nil => unit(Nil)
+		case fh :: frest => for(ah <- fh; arest <- sequence(frest)) yield ah :: arest
+	}
+
+	def getState[S]: State[S, S] = State(s => (s,s))
+
+	def setState[S](s1: S): State[S, Unit] = State(s => ((), s1))
+
+	def modify[S](f: S => S): State[S, Unit] =
+		for(x <- getState[S];
+				_ <- setState(f(x))) yield ()
   
   type Rand[A] = State[RNG, A]
-  def simulateMachine(inputs: List[Input]): State[Machine, Int] = sys.error("todo")
+
+  def simulateMachine(inputs: List[Input]): State[Machine, Int] = inputs match {
+		case Nil => unit(0)
+		case ihead :: irest => for(
+				_ <- modify(stepMachine(ihead));
+				_ <- simulateMachine(irest);
+				coins <- getCoins
+			) yield coins
+	}
+
+	val getCoins: State[Machine, Int] = getState[Machine].map(_.coins)
+
+	def stepMachine(input: Input): Machine => Machine = input match {
+		case Coin => m => m match {
+			case Machine(locked, candies, coins) => Machine(false, candies, coins + 1)
+		}
+		case Turn => m => m match {
+			case Machine(false, candies, coins) if(candies > 0) => Machine(true, candies - 1, coins)
+			case m @ _ => m
+		}
+	}
+
 }
