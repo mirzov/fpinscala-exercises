@@ -51,7 +51,10 @@ object List { // `List` companion object
     foldRight(l, 1.0)(_ * _)
 
 
-  def tail[A](l: List[A]): List[A] = sys.error("todo")
+  def tail[A](l: List[A]): List[A] = l match{
+		case Nil => Nil
+		case Cons(h, tail) => tail
+	}
 
   def drop[A](l: List[A], n: Int): List[A] = sys.error("todo")
 
@@ -63,7 +66,27 @@ object List { // `List` companion object
 
   def length[A](l: List[A]): Int = sys.error("todo")
 
-  def foldLeft[A,B](l: List[A], z: B)(f: (B, A) => B): B = sys.error("todo")
+  def foldLeft[A,B](l: List[A], z: B)(f: (B, A) => B): B = l match {
+		case Nil => z
+		case Cons(h,t) => foldLeft(t, f(z,h))(f)
+	}
+
+	def reverse[A](l: List[A]): List[A] = foldLeft(l, Nil: List[A])((rl,a) => Cons(a, rl))
+
+	def reverse_viaFoldRight[A](l: List[A]): List[A] = l match{
+		case Nil => Nil
+		case Cons(h, t) => foldRight(reverse_viaFoldRight(t), Cons(h, Nil))(Cons(_,_))
+	}
+
+	def foldLeft_viaFoldRight[A,B](l: List[A], z: B)(f: (B, A) => B): B = 
+		foldRight(reverse_viaFoldRight(l), z)((a,b) => f(b,a))
+
+	def foldRight_viaFoldLeft[A,B](l: List[A], z: B)(f: (A, B) => B): B =
+		foldLeft(reverse(l), z)((b,a) => f(a,b))
+
+	def append_viaFoldRight[A](a1: List[A], a2: List[A]): List[A] = foldRight(a1, a2)(Cons(_,_))
+
+	def flattenList[A](ll: List[List[A]]): List[A] = foldRight(ll, Nil:List[A])(append(_,_))
 
   def map[A,B](l: List[A])(f: A => B): List[B] = sys.error("todo")
 }
