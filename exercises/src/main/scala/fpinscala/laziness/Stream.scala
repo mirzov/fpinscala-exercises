@@ -11,13 +11,26 @@ trait Stream[+A] {
       case None => z
     }
 
-  def exists(p: A => Boolean): Boolean = 
-    foldRight(false)((a, b) => p(a) || b)
-  def take(n: Int): Stream[A] = sys.error("todo")
+	def toList: List[A] = uncons match{
+		case None => Nil
+		case Some((h, t)) => h :: t.toList
+	}
 
-  def takeWhile(p: A => Boolean): Stream[A] = sys.error("todo")
+  def exists(p: A => Boolean): Boolean = foldRight(false)((a, b) => p(a) || b)
 
-  def forAll(p: A => Boolean): Boolean = sys.error("todo")
+  def take(n: Int): Stream[A] = 
+		if(n <= 0) Stream.empty
+		else uncons match {
+      case Some((h, t)) => Stream.cons(h, t.take(n - 1))
+      case None => sys.error("nothing to take from an empty stream!")
+    }
+
+  def takeWhile(p: A => Boolean): Stream[A] = uncons match {
+		case None => Stream.empty
+		case Some((h, t)) => if(p(h)) Stream.cons(h, t.takeWhile(p)) else Stream.empty
+	}
+
+  def forAll(p: A => Boolean): Boolean = foldRight(true)((a, b) => p(a) && b)
 }
 object Stream {
   def empty[A]: Stream[A] = 
