@@ -1,5 +1,7 @@
 package fpinscala.datastructures
 
+import scala.annotation.tailrec
+
 sealed trait List[+A] // `List` data type
 case object Nil extends List[Nothing] // data constructor for `List`
 case class Cons[+A](head: A, tail: List[A]) extends List[A]
@@ -56,15 +58,33 @@ object List { // `List` companion object
 		case Cons(h, tail) => tail
 	}
 
-  def drop[A](l: List[A], n: Int): List[A] = sys.error("todo")
+  @tailrec
+  def drop[A](l: List[A], n: Int): List[A] =
+    if(n <= 0) l else drop(tail(l), n - 1)
 
-  def dropWhile[A](l: List[A])(f: A => Boolean): List[A] = sys.error("todo")
+  @tailrec
+  def dropWhile[A](l: List[A])(f: A => Boolean): List[A] = l match{
+    case Nil => Nil
+    case Cons(h, tail) =>
+      if(f(h)) dropWhile(tail)(f) else l
+  }
 
-  def setHead[A](l: List[A])(h: A): List[A] = sys.error("todo")
+  def setHead[A](l: List[A])(h: A): List[A] = Cons(h, tail(l))
 
-  def init[A](l: List[A]): List[A] = sys.error("todo")
+  def init[A](l: List[A]): List[A] = l match{
+    case Nil => Nil
+    case Cons(_, Nil) => Nil
+    case Cons(h, tail) => Cons(h, init(tail))
+  }
 
-  def length[A](l: List[A]): Int = sys.error("todo")
+  def length[A](l: List[A]): Int = {
+    @tailrec
+    def lengthAcc(acc: Int, l: List[A]): Int = l match{
+      case Nil => acc
+      case Cons(h, tail) => lengthAcc(acc+1, tail)
+    }
+    lengthAcc(0, l)
+  }
 
   def foldLeft[A,B](l: List[A], z: B)(f: (B, A) => B): B = l match {
 		case Nil => z
