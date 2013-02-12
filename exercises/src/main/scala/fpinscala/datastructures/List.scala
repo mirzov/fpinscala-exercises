@@ -108,5 +108,44 @@ object List { // `List` companion object
 
 	def flattenList[A](ll: List[List[A]]): List[A] = foldRight(ll, Nil:List[A])(append(_,_))
 
-  def map[A,B](l: List[A])(f: A => B): List[B] = sys.error("todo")
+  def map[A,B](l: List[A])(f: A => B): List[B] = l match{
+		case Nil => Nil
+		case Cons(h,t) => Cons(f(h), map(t)(f))
+	}
+
+	def filter[A](l: List[A])(f: A => Boolean): List[A] = l match{
+		case Nil => Nil
+		case Cons(h,t) => if(f(h)) Cons(h, filter(t)(f)) else filter(t)(f)
+	}
+
+	def filterOdd(l: List[Int]): List[Int] = filter(l)(_ % 2 == 0)
+
+	def flatMap[A,B](l: List[A])(f: A => List[B]) = flattenList(map(l)(f))
+
+	def filter_viaFlatMap[A](l: List[A])(f: A => Boolean): List[A] = flatMap(l)(a => if(f(a)) List(a) else Nil)
+
+	def zip[A,B,C](la: List[A], lb: List[B])(f: (A,B) => C): List[C] = la match{
+		case Nil => Nil
+		case Cons(ha,ta) => lb match{
+			case Nil => Nil
+			case Cons(hb, tb) => Cons(f(ha,hb), zip(ta,tb)(f))
+		}
+	}
+
+	@tailrec
+	def hasSubsequence[A](l: List[A], sub: List[A]): Boolean = {
+		@tailrec
+		def startsFrom[A](l: List[A], sub: List[A], maySucceed: Boolean): Boolean = maySucceed && (sub match {
+			case Nil => true
+			case Cons(sh, st) => l match{
+				case Nil => false
+				case Cons(lh, lt) => startsFrom(lt, st, sh == lh)
+			}
+		})
+		startsFrom(l, sub, true) || (l match{
+			case Nil => false
+			case Cons(lh, lt) => hasSubsequence(lt,sub)
+		})
+	}
+
 }
