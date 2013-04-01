@@ -43,6 +43,7 @@ sealed trait Option[+A] {
   def filter_1(f: A => Boolean): Option[A] =
     flatMap(a => if (f(a)) Some(a) else None)
 }
+
 case class Some[+A](get: A) extends Option[A]
 case object None extends Option[Nothing]
 
@@ -92,13 +93,33 @@ object Option {
     mkMatcher(pat) flatMap (f => 
     mkMatcher(pat2) map     (g => 
     f(s) && g(s)))
-  def variance(xs: Seq[Double]): Option[Double] = sys.error("todo")
 
-  def map2[A,B,C](a: Option[A], b: Option[B])(f: (A, B) => C): Option[C] = sys.error("todo")
+  def variance(xs: Seq[Double]): Option[Double] = for{
+		m <- mean(xs)
+		devSquares = xs.map(x => math.pow(x - m, 2))
+		v <- mean(devSquares)
+  } yield v
 
-  def bothMatch_2(pat1: String, pat2: String, s: String): Option[Boolean] = sys.error("todo")
+  def map2[A,B,C](a: Option[A], b: Option[B])(f: (A, B) => C): Option[C] =
+		for{
+			aa <- a
+			bb <- b
+		} yield f(aa, bb)
 
-  def sequence[A](a: List[Option[A]]): Option[List[A]] = sys.error("todo")
+  def bothMatch_2(pat1: String, pat2: String, s: String): Option[Boolean] =
+		map2(doesMatch(pat1,s), doesMatch(pat2,s))(_ && _)
 
-  def traverse[A, B](a: List[A])(f: A => Option[B]): Option[List[B]] = sys.error("todo")
+  def sequence[A](a: List[Option[A]]): Option[List[A]] = a match{
+		case Nil => Some(Nil)
+		case h :: tail => map2(h, sequence(tail))(_ :: _)
+	}
+
+  def traverse[A, B](a: List[A])(f: A => Option[B]): Option[List[B]] = a match{
+		case Nil => Some(Nil)
+		case h :: tail => map2(f(h), traverse(tail)(f))(_ :: _)
+	}
+
+	def sequenceViaTraverse[A](a: List[Option[A]]): Option[List[A]] = traverse(a)(x => x)
+
 }
+
