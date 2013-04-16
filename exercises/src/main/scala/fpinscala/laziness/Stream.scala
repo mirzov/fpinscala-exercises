@@ -4,7 +4,9 @@ import Stream._
 
 trait Stream[+A] {
 	def uncons: Option[(A, Stream[A])]
+	
 	def isEmpty: Boolean = uncons.isEmpty
+	
 	def foldRight[B](z: => B)(f: (A, => B) => B): B = uncons match {
 		case Some((h, t)) => f(h, t.foldRight(z)(f))
 		case None => z
@@ -40,6 +42,10 @@ trait Stream[+A] {
 	def filter(p: A => Boolean): Stream[A] = foldRight(empty[A])((a,s) => {
 		if(p(a)) cons(a,s) else s
 	})
+	
+	def collect[B](f: PartialFunction[A,B]): Stream[B] = foldRight(empty[B])((a,s) => {
+		if(f.isDefinedAt(a)) cons(f(a),s) else s
+	})
 
 	def append[B >: A](bs: Stream[B]): Stream[B] = foldRight(bs)(cons(_,_))
 
@@ -59,6 +65,21 @@ trait Stream[+A] {
 	def takeWhile_unfold(p: A => Boolean): Stream[A] = unfold(this)(
 		_.uncons.flatMap{case (ahead, atail) => if(p(ahead)) Some(ahead, atail) else None}
 	)
+	
+	def tails: Stream[Stream[A]] = cons(this, unfold(this)(s => s.uncons map{
+		case (_, tail) => (tail, tail)
+	}))
+	
+	def head: A = uncons.map(_._1).getOrElse(throw new Exception("no head in an empty stream!"))
+	
+	def scanRight[B](z: => B)(f: (A, => B) => B): Stream[B] = uncons match {
+		case Some((h, t)) =>
+			val tb = t.scanRight(z)(f) 
+			val hb = f(h, tb.head)
+			cons(hb, tb)
+		case None => Stream(z)
+	}
+	
 }
 
 object Stream {
@@ -98,6 +119,28 @@ object Stream {
 	def constant_unfold[A](a: A): Stream[A] = unfold(a)(s => Some((s, s)))
 
 	val ones_unfold = constant_unfold(1)
-
-	def startsWith[A](s: Stream[A], s2: Stream[A]): Boolean = sys.error("todo")
+	
+	def zip[A,B](s1: Stream[A], s2: Stream[B]): Stream[(A, B)] = unfold((s1.uncons,s2.uncons)){
+		case ( Some((h1,t1)), Some((h2,t2)) ) => Some( ((h1,h2), (t1.uncons,t2.uncons)) )
+		case _ => None
+	}
+	
+	def zipAll[A,B](s1: Stream[A], s2: Stream[B]): Stream[(Option[A], Option[B])] = unfold((s1,s2))(s => {
+		def optionizeTuple[T](opt: Option[(T, Stream[T])]): (Option[T], Stream[T]) = opt.map{
+			case(t,s) => (Some(t),s)
+		}.getOrElse((None, empty))
+		
+		val (h1,t1) = optionizeTuple(s._1.uncons)
+		val (h2,t2) = optionizeTuple(s._2.uncons)
+		
+		if (h1 == None && h2 == None) None else Some( (h1,h2), (t1,t2) )
+	})
+	
+	def startsWith[A](s: Stream[A], s2: Stream[A]): Boolean =
+		zipAll(s,s2).collect{
+			case (Some(a1),Some(a2)) if !a1.equals(a2) => false
+			case (None, Some(a2)) => false
+			case (Some(a1), None) => true
+			case (None, None) => true
+		}.uncons.map(_._1).getOrElse(true)
 }
