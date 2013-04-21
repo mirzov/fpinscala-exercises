@@ -48,6 +48,7 @@ object Par {
       def call = a(es).get
     })
   
+	def asyncF[A,B](f: A => B): A => Par[B] = a => fork_simple(unit(f(a)))
   
   /* 
   Note: this implementation will not prevent repeated evaluation if multiple threads call `get` in parallel. We could prevent this using synchronization, but it isn't needed for our purposes here (also, repeated evaluation of pure values won't affect results).
@@ -79,6 +80,26 @@ object Par {
     map2(fa, unit(()))((a,_) => f(a))
 
   def sortPar(l: Par[List[Int]]) = map(l)(_.sorted)
+
+	def parMap[A,B](l: List[A])(f: A => B): Par[List[B]] = l match {
+		case Nil => unit(Nil)
+		case h :: tail => map2(asyncF(f)(h), parMap(tail)(f))(_ :: _)
+	}
+
+	def sequence[A](l: List[Par[A]]): Par[List[A]] = l match {
+		case Nil => unit(Nil)
+		case h :: tail => map2(h, sequence(tail))(_ :: _)
+	}
+	
+	def parMap_viaSeq[A,B](l: List[A])(f: A => B): Par[List[B]] = sequence(l.map(asyncF(f)(_)))
+
+	def parFilter[A](l: List[A])(f: A => Boolean): Par[List[A]] = {
+		val zipper: A => (A, Boolean) = a => (a, f(a))
+		val pairs: Par[List[(A, Boolean)]] = sequence(l.map(asyncF(zipper)(_)))
+		map(pairs)(_.collect{
+			case (a, true) => a
+		})
+	}
 
   def equal[A](e: ExecutorService)(p: Par[A], p2: Par[A]): Boolean = 
     p(e).get == p2(e).get
