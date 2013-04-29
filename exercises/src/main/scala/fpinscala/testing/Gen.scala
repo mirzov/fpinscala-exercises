@@ -15,6 +15,11 @@ shell, which you can fill in and modify while working through the chapter.
 */
 
 trait Prop {
+	self =>
+	def check: Boolean
+	def &&(p: Prop): Prop = new Prop{
+		def check: Boolean = self.check && p.check
+	}
 }
 
 object Prop {
@@ -30,6 +35,14 @@ object Status {
 }
 
 object Gen {
+
+	type Gen[A] = State[RNG,A]
+
+	def choose(start: Int, stopExclusive: Int): Gen[Int] = State[RNG,Int]{r: RNG =>
+		val (i,r1) = r.nextInt
+		val sample: Int = start + math.abs(i % (stopExclusive - start))
+		(sample, r1)
+	}
 
 }
 
