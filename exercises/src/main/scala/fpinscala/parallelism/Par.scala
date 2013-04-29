@@ -47,8 +47,17 @@ object Par {
     es => es.submit(new Callable[A] { 
       def call = a(es).get
     })
+
+	def fork_my[A](a: => Par[A]): Par[A] = es =>
+		es.submit(new Callable[Future[A]] { 
+      def call = a(es)
+    }).get
   
-	def asyncF[A,B](f: A => B): A => Par[B] = a => fork_simple(unit(f(a)))
+	def fork[A](a: => Par[A]) = fork_simple(a)
+
+	def async[A](a: => A): Par[A] = fork(unit(a))
+
+	def asyncF[A,B](f: A => B): A => Par[B] = a => fork(unit(f(a)))
   
   /* 
   Note: this implementation will not prevent repeated evaluation if multiple threads call `get` in parallel. We could prevent this using synchronization, but it isn't needed for our purposes here (also, repeated evaluation of pure values won't affect results).
@@ -107,13 +116,37 @@ object Par {
   def delay[A](fa: => Par[A]): Par[A] = 
     es => fa(es)
 
+	def choice[A](a: Par[Boolean])(ifTrue: Par[A], ifFalse: Par[A]): Par[A] = es => {
+		val parPar: Par[Par[A]] = map(a){ch => if(ch) ifTrue else ifFalse}
+		fork(parPar(es).get())(es)
+	}
+
+	def chooser[A,B](a: Par[A])(choices: A => Par[B]): Par[B] = es => {
+		val parPar: Par[Par[B]] = map(a)(choices)
+		fork(parPar(es).get())(es)
+	}
+
+	def join[A](a: Par[Par[A]]): Par[A] = es => a(es).get()(es)
+
+
   /* Gives us infix syntax for `Par`. */
   implicit def toParOps[A](p: Par[A]): ParOps[A] = new ParOps(p)
 
   class ParOps[A](p: Par[A]) {
-
+	
+		def flatMap[B](f: A => Par[B]): Par[B] = Par.chooser(p)(f)
+		def map[B](f: A => B): Par[B] = Par.map(p)(f)
 
   }
+
+	def parList(n: Int) = parMap_viaSeq((1 to n).toList)(x => {
+		println("incr " + x + " on thread " + Thread.currentThread.getId)
+		x + 1
+	})
+
+	def pool(n: Int) = java.util.concurrent.Executors.newFixedThreadPool(n)
+
+	def fut(listLen: Int, threadPoolSize: Int): Future[List[Int]] = parList(listLen)(pool(threadPoolSize))
 }
 
 object Examples {
