@@ -44,7 +44,7 @@ object Gen {
 		(sample, r1)
 	}
 
-	def unit[A](a: => A): Gen[A] = Gen(State.unit(a), Stream.constant(a))
+	def unit[A](a: => A): Gen[A] = Gen(State.unit(a), Stream(a))
 
 	def boolean: Gen[Boolean] = Gen(State(RNG.int).map(_ % 2 == 0), Stream(false,true))
 
@@ -53,11 +53,21 @@ object Gen {
 		Stream.from(start).take(stopExclusive - start)
 	)
 
-	def listOfN[A](n: Int, g: Gen[A]): Gen[List[A]] = ???
+	def listOfN[A](n: Int, g: Gen[A]): Gen[List[A]] = {
+		val listSample = State.sequence(List.fill(n)(g.sample))
+		def getStreamOfLists(len: Int): Stream[List[A]] =
+			if(len <= 0) g.exhaustive.map(_ => Nil)
+			else if(len == 1) g.exhaustive.map(List(_))
+			else for(a <- g.exhaustive; l <- getStreamOfLists(len - 1)) yield a :: l
+		Gen(listSample, getStreamOfLists(n))
+	}
 
 }
 
-case class Gen[+A](sample: State[RNG,A], exhaustive: Stream[A])
+case class Gen[+A](sample: State[RNG,A], exhaustive: Stream[A]){
+	def map[A,B](f: A => B): Gen[B] = sys.error("placeholder")
+	def flatMap[A,B](f: A => Gen[B]): Gen[B] = sys.error("placeholder")
+}
 
 //trait Gen[A] {
 //  def map[A,B](f: A => B): Gen[B] = sys.error("placeholder")
