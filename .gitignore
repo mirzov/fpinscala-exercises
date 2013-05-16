@@ -7,4 +7,8 @@ project/boot
 project.vim
 *.scala~
 *.old
+.project
+.cache
+.classpath
+.settings/
 
