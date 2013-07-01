@@ -17,30 +17,50 @@ object Monoid {
     val zero = Nil
   }
 
-  val intAddition: Monoid[Int] = sys.error("todo")
+  val intAddition: Monoid[Int] = new Monoid[Int]{
+		def op(i1: Int, i2: Int): Int = i1 + i2
+		def zero: Int = 0
+	}
 
-  val intMultiplication: Monoid[Int] = sys.error("todo")
+  val intMultiplication: Monoid[Int] = new Monoid[Int] {
+		def op(i1: Int, i2: Int): Int = i1 * i2
+		def zero: Int = 1
+	}
 
-  val booleanOr: Monoid[Boolean] = sys.error("todo")
+  val booleanOr: Monoid[Boolean] = new Monoid[Boolean]{
+		def op(b1: Boolean, b2: Boolean): Boolean = b1 || b2
+		def zero: Boolean = false
+	}
 
-  val booleanAnd: Monoid[Boolean] = sys.error("todo")
+  val booleanAnd: Monoid[Boolean] = new Monoid[Boolean]{
+		def op(b1: Boolean, b2: Boolean): Boolean = b1 && b2
+		def zero: Boolean = true
+	}
 
-  def optionMonoid[A]: Monoid[Option[A]] = sys.error("todo")
+  def optionMonoid[A]: Monoid[Option[A]] = new Monoid[Option[A]]{
+		def op(o1: Option[A], o2: Option[A]): Option[A] = (o1, o2) match{
+			case (None, None) => None
+			case (Some(_), None) => o1
+			case (None, Some(_)) => o2
+			case (Some(a1), Some(a2)) => if (a1 == a2) o1 else None
+		}
+		def zero: Option[A] = None
+	}
 
-  def endoMonoid[A]: Monoid[A => A] = sys.error("todo")
-
-  // TODO: Placeholder for `Prop`. Remove once you have implemented the `Prop`
-  // data type from Part 2.
-  trait Prop {}
-
-  // TODO: Placeholder for `Gen`. Remove once you have implemented the `Gen`
-  // data type from Part 2.
+  def endoMonoid[A]: Monoid[A => A] = new Monoid[A => A]{
+		def op(f1: A => A, f2: A => A): A => A = f1 compose f2
+		def zero: A => A = a => a
+	}
 
   import fpinscala.testing._
   import Prop._
+
   def monoidLaws[A](m: Monoid[A], gen: Gen[A]): Prop = sys.error("todo")
 
-  def trimMonoid(s: String): Monoid[String] = sys.error("todo")
+  def trimMonoid(s: String): Monoid[String] = new Monoid[String]{
+		def op(s1: String, s2: String): String = if(s1 == "") s2 else if(s2 == "") s1 else (s1.trim + " " + s2.trim).trim
+		def zero: String = ""
+	}
 
   def concatenate[A](as: List[A], m: Monoid[A]): A =
     sys.error("todo")
