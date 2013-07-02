@@ -6,7 +6,7 @@ import fpinscala.parallelism._
 import fpinscala.parallelism.Par.Par
 import Gen._
 import Prop._
-import Status._
+//import Status._
 import java.util.concurrent.{Executors,ExecutorService}
 
 /*
@@ -14,32 +14,63 @@ The library developed in this chapter goes through several iterations. This file
 shell, which you can fill in and modify while working through the chapter.
 */
 
-trait Prop {
-	self =>
-	def check: Boolean
-	def &&(p: Prop): Prop = new Prop{
-		def check: Boolean = self.check && p.check
-	}
+case class Prop(run: (TestCases,RNG) => Result){
+	
+	def &&(p: Prop): Prop = Prop( (tcases, rng) => {
+		this.run(tcases,rng) match{
+			case f @ Left(failCase1) => p.run(tcases, rng) match{
+				case Left(failCase2) => Left(failCase1 + ", " + failCase2)
+				case _ => f 
+			}
+			case Right((stat1, count1)) => p.run(tcases, rng) match{
+				case f @ Left(failCase) => f
+				case Right((stat2, count2)) => Right((stat1 && stat2, count1 + count2)) 
+			}
+		}
+	})
+	
+	def ||(p: Prop): Prop = Prop( (tcases, rng) => {
+		this.run(tcases,rng) match{
+			case Left(failCase1) => p.run(tcases, rng) match{
+				case Left(failCase2) => Left(failCase1 + ", " + failCase2)
+				case r @ Right(_) => r 
+			}
+			case r @ Right((stat1, count1)) => p.run(tcases, rng) match{
+				case Left(_) => r
+				case Right((stat2, count2)) => Right((stat1 || stat2, count1 + count2)) 
+			}
+		}
+	})
 }
 
 object Prop {
-  def forAll[A](gen: Gen[A])(f: A => Boolean): Prop = ???
+	type FailedCase = String
+	type SuccessCount = Int
+	type TestCases = Int
+	type Result = Either[FailedCase, (Status,SuccessCount)]
+	
+	def forAll[A](gen: Gen[A])(f: A => Boolean): Prop = ???
 }
 
-trait Status {
-
+sealed trait Status{
+	def &&(s: Status): Status = (this, s) match{
+		case (Proven, Proven) => Proven
+		case _ => Unfalsified
+	}
+	def ||(s: Status): Status = (this, s) match{
+		case (Unfalsified, Unfalsified) => Unfalsified
+		case _ => Proven
+	}
 }
-
-object Status {
-
-}
+case object Proven extends Status
+case object Unfalsified extends Status
 
 object Gen {
 
 //	type Gen[A] = State[RNG,A]
 
 	def chooseRNG(start: Int, stopExclusive: Int) = State[RNG,Int]{r: RNG =>
-		val (i,r1) = r.nextInt
+		val (i, r1) = r.nextInt
 		val sample: Int = start + math.abs(i % (stopExclusive - start))
 		(sample, r1)
 	}
@@ -120,7 +151,9 @@ object Gen {
 }
 
 case class Gen[+A](sample: State[RNG,A], exhaustive: Stream[Option[A]]){
+	
 	def map[B](f: A => B): Gen[B] = Gen(sample.map(f), exhaustive.map(_.map(f)))
+	
 	def flatMap[B](f: A => Gen[B]): Gen[B] = {
 		val bSample = sample.flatMap(a => f(a).sample)
 		val bExhaustive = exhaustive.flatMap[Option[B]]{aopt => aopt match {
@@ -132,14 +165,14 @@ case class Gen[+A](sample: State[RNG,A], exhaustive: Stream[Option[A]]){
 	}
 	
 	def listOfN(size: Gen[Int]): Gen[List[A]] = size.flatMap(n => Gen.listOfN(n, this))
+	
+	def unsized: SGen[A] = SGen(size => 
+		Gen(sample, exhaustive.take(size))
+	)
 }
 
-//trait Gen[A] {
-//  def map[A,B](f: A => B): Gen[B] = sys.error("placeholder")
-//  def flatMap[A,B](f: A => Gen[B]): Gen[B] = sys.error("placeholder")
-//}
-
-trait SGen[+A] {
-
+case class SGen[+A](forSize: Int => Gen[A]){
+	def map[B](f: A => B): SGen[B] = SGen(forSize(_).map(f))
+	def flatMap[B](f: A => Gen[B]): SGen[B] = SGen(forSize andThen (_ flatMap f))
 }
 
