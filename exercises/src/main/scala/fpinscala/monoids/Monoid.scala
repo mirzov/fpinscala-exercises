@@ -65,8 +65,7 @@ object Monoid {
   def optMonoidProp = monoidLaws(optionMonoid[Int], Gen.posNum[Int].map{n => if(n % 2 == 0) Some(n) else None})
 
   def wordsMonoid: Monoid[String] = new Monoid[String]{
-		def op(s1: String, s2: String) = opInv(s2, s1)
-		def opInv(s1: String, s2: String): String = 
+		def op(s1: String, s2: String): String = 
 			if(s1 == zero) s2
 			else if(s2 == zero) s1
 			else (s1.trim + " " + s2.trim).trim
