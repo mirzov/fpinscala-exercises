@@ -1,11 +1,44 @@
 package fpinscala.exercises.parsing
 
+import scala.util.matching.Regex
+
 trait Parsers[Parser[+_]]:
   self => // so inner classes may call methods of trait
 
   case class ParserOps[A](p: Parser[A])
 
   object Laws
+
+trait CpParsers[Parser[+_]]:
+
+  def succeed[A](a: A): Parser[A]
+  def string(s: String): Parser[String]
+  def regex(r: Regex): Parser[String]
+
+  val whitespace: Parser[String] = regex("\\s*".r)
+
+  extension [A](p: Parser[A])
+    def run(input: String): Either[String, A]
+    def slice: Parser[String]
+    def map[B](f: A => B): Parser[B] = flatMap(a => succeed(f(a)))
+    def flatMap[B](f: A => Parser[B]): Parser[B] = ???
+
+    def or[B >: A](p2: => Parser[B]): Parser[B] = ???
+    def | [B >: A](p2: => Parser[B]): Parser[B] = or(p2)
+
+    def product[B](p2: => Parser[B]): Parser[(A, B)] = flatMap(a => p2.map(b => (a, b)))
+    def **[B](p2: => Parser[B]): Parser[(A, B)] = product(p2)
+
+    def many: Parser[List[A]]
+    def many1: Parser[List[A]]
+
+    def <*[B](p2: => Parser[B]): Parser[A] = p.flatMap(a => p2.slice.map(_ => a))
+    def *>[B](p2: => Parser[B]): Parser[B] = p.slice.flatMap(_ => p2)
+
+    def token: Parser[A] = p <* whitespace
+  end extension
+
+end CpParsers
 
 case class Location(input: String, offset: Int = 0):
 

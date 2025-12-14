@@ -10,3 +10,8 @@ enum JSON:
 
 object JSON:
   def jsonParser[Parser[+_]](P: Parsers[Parser]): Parser[JSON] = ???
+
+  def cpParser[Parser[+_]](P: CpParsers[Parser]): Parser[JSON] = {
+    import P.*
+    ???
+  }
