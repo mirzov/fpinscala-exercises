@@ -9,7 +9,7 @@ trait Parsers[Parser[+_]]:
 
   object Laws
 
-trait CpParsers[Parser[+_]]:
+trait CpParsers[Parser[+_], R]:
 
   def succeed[A](a: A): Parser[A]
   def string(s: String): Parser[String]
@@ -18,7 +18,7 @@ trait CpParsers[Parser[+_]]:
   val whitespace: Parser[String] = regex("\\s*".r)
 
   extension [A](p: Parser[A])
-    def run(input: String): Either[String, A]
+    def run(input: String): R
     def slice: Parser[String]
     def map[B](f: A => B): Parser[B] = flatMap(a => succeed(f(a)))
     def flatMap[B](f: A => Parser[B]): Parser[B] = ???

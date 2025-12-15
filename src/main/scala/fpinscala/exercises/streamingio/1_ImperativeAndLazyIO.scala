@@ -13,7 +13,7 @@ object ImperativeAndLazyIO:
   into `IO`.
                              */
 
-  import java.io.*
+  import java.io.{IO as _, *}
 
   def linesGt40k(filename: String): IO[Boolean] = IO:
     // There are a number of convenience functions in scala.io.Source
