@@ -2,13 +2,13 @@ package fpinscala.exercises.parsing
 
 import scala.util.matching.Regex
 
-object SimpleParsers extends CpParsers[SimpleParsers.Parser, SimpleParsers.Result] {
+object SimpleParsers extends CpParsers[SimpleParsers.Parser] {
 
-  sealed trait Result
-  case class Error(msg: String) extends Result
-  case class Success[A](value: A, remainingInput: String) extends Result
+  sealed trait Result[+A]
+  case class Error(msg: String) extends Result[Nothing]
+  case class Success[A](value: A, remainingInput: String) extends Result[A]
 
-  type Parser[+A] = String => Result
+  type Parser[+A] = String => Result[A]
 
   override def succeed[A](a: A): Parser[A] = input => Success(a, input)
 
@@ -29,7 +29,7 @@ object SimpleParsers extends CpParsers[SimpleParsers.Parser, SimpleParsers.Resul
 
 
   extension [A](p: Parser[A])
-    override def run(input: String): Result = p(input)
+    override def run(input: String): Result[A] = p(input)
     override def slice: Parser[String] = ???
     override def flatMap[B](f: A => Parser[B]): Parser[B] = ???
     override def or[B >: A](p2: => Parser[B]): Parser[B] = ???

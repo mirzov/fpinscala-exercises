@@ -9,33 +9,37 @@ trait Parsers[Parser[+_]]:
 
   object Laws
 
-trait CpParsers[Parser[+_], R]:
+trait CpParsers[Parser[+_]]:
 
+  type Result[A]
   def succeed[A](a: A): Parser[A]
   def string(s: String): Parser[String]
   def regex(r: Regex): Parser[String]
 
-  val whitespace: Parser[String] = regex("\\s*".r)
+  final val whitespace: Parser[String] = regex("\\s*".r)
 
   extension [A](p: Parser[A])
-    def run(input: String): R
+    def run(input: String): Result[A]
     def slice: Parser[String]
-    def map[B](f: A => B): Parser[B] = flatMap(a => succeed(f(a)))
-    def flatMap[B](f: A => Parser[B]): Parser[B] = ???
+    final def map[B](f: A => B): Parser[B] = flatMap(a => succeed(f(a)))
+    def flatMap[B](f: A => Parser[B]): Parser[B]
 
-    def or[B >: A](p2: => Parser[B]): Parser[B] = ???
-    def | [B >: A](p2: => Parser[B]): Parser[B] = or(p2)
+    def or[B >: A](p2: => Parser[B]): Parser[B]
+    final def | [B >: A](p2: => Parser[B]): Parser[B] = or(p2)
 
-    def product[B](p2: => Parser[B]): Parser[(A, B)] = flatMap(a => p2.map(b => (a, b)))
-    def **[B](p2: => Parser[B]): Parser[(A, B)] = product(p2)
+    final def product[B](p2: => Parser[B]): Parser[(A, B)] = flatMap(a => p2.map(b => (a, b)))
+    final def **[B](p2: => Parser[B]): Parser[(A, B)] = product(p2)
 
     def many: Parser[List[A]]
     def many1: Parser[List[A]]
 
-    def <*[B](p2: => Parser[B]): Parser[A] = p.flatMap(a => p2.slice.map(_ => a))
-    def *>[B](p2: => Parser[B]): Parser[B] = p.slice.flatMap(_ => p2)
+    final def keepLeft[B](p2: => Parser[B]): Parser[A] = p.flatMap(a => p2.slice.map(_ => a))
+    final def <*[B](p2: => Parser[B]): Parser[A] = p.keepLeft(p2)
 
-    def token: Parser[A] = p <* whitespace
+    final def keepRight[B](p2: => Parser[B]): Parser[B] = p.slice.flatMap(_ => p2)
+    final def *>[B](p2: => Parser[B]): Parser[B] = p.keepRight(p2)
+
+    final def token: Parser[A] = p <* whitespace
   end extension
 
 end CpParsers
