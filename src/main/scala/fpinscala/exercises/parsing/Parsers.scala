@@ -13,6 +13,7 @@ trait CpParsers[Parser[+_]]:
 
   type Result[A]
   def succeed[A](a: A): Parser[A]
+  def fail(errorMessage: String): Parser[Nothing]
   def string(s: String): Parser[String]
   def regex(r: Regex): Parser[String]
 
@@ -30,8 +31,9 @@ trait CpParsers[Parser[+_]]:
     final def product[B](p2: => Parser[B]): Parser[(A, B)] = flatMap(a => p2.map(b => (a, b)))
     final def **[B](p2: => Parser[B]): Parser[(A, B)] = product(p2)
 
-    def many: Parser[List[A]]
-    def many1: Parser[List[A]]
+    def many: Parser[IndexedSeq[A]]
+    def many1: Parser[IndexedSeq[A]]
+    def seqWithSep(sep: String): Parser[IndexedSeq[A]]
 
     final def keepLeft[B](p2: => Parser[B]): Parser[A] = p.flatMap(a => p2.slice.map(_ => a))
     final def <*[B](p2: => Parser[B]): Parser[A] = p.keepLeft(p2)

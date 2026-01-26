@@ -14,6 +14,14 @@ object JSON:
 
     def token(s: String) = string(s).token
 
+    val lit: Parser[JSON] = (
+      token("null").as(JNull) |
+      double.map(JNumber(_)) |
+      escapedQuoted.map(JString(_)) |
+      token("true").as(JBool(true)) |
+      token("false").as(JBool(false))
+    ).scope("literal")
+
     def array: Parser[JSON] = (
       token("[") *> value.sep(token(",")).map(vs => JArray(vs.toIndexedSeq)) <* token("]")
     ).scope("array")
@@ -24,13 +32,6 @@ object JSON:
 
     def keyval: Parser[(String, JSON)] = escapedQuoted ** (token(":") *> value)
 
-    def lit: Parser[JSON] = (
-      token("null").as(JNull) |
-      double.map(JNumber(_)) |
-      escapedQuoted.map(JString(_)) |
-      token("true").as(JBool(true)) |
-      token("false").as(JBool(false))
-    ).scope("literal")
 
     def value: Parser[JSON] = lit | obj | array
 

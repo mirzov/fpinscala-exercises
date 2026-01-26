@@ -12,6 +12,8 @@ object SimpleParsers extends CpParsers[SimpleParsers.Parser] {
 
   override def succeed[A](a: A): Parser[A] = input => Success(a, input)
 
+  override def fail(errorMessage: String): Parser[Nothing] = ???
+
   override def string(s: String): Parser[String] = input =>
     if input.startsWith(s) then Success(s, s.drop(s.length))
     else
@@ -33,7 +35,9 @@ object SimpleParsers extends CpParsers[SimpleParsers.Parser] {
     override def slice: Parser[String] = ???
     override def flatMap[B](f: A => Parser[B]): Parser[B] = ???
     override def or[B >: A](p2: => Parser[B]): Parser[B] = ???
-    override def many: Parser[List[A]] = ???
-    override def many1: Parser[List[A]] = ???
+    override def many: Parser[IndexedSeq[A]] = ???
+    override def many1: Parser[IndexedSeq[A]] = ???
+
+    override def seqWithSep(sep: String) = ???
 
 }
